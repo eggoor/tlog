@@ -44,11 +44,11 @@
 extern "C" {
 #endif
 
-int tlog_init(int mode, int level, void* param);
+int tlog_init(int mode, int level, const void* param);
 
 void tlog(int level, const char* format, ...);
 
-void tlog_hex(int level, const char* str, void* d, int l);
+void tlog_hex(int level, const char* str, const void* d, int l);
 
 #ifdef __cplusplus
 }
