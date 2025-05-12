@@ -26,11 +26,12 @@
 static int log_mode = TLOG_MODE_STDERR;
 static int min_level = TLOG_WARNING;
 static FILE* log_file;
-static char log_str[2048];
+#define BUF_SIZE 2048
+static char log_str[BUF_SIZE];
 static const char log_prestr[] = "tlog";
 static const char level_str[][10] = {"[EMERG]", "[ALERT]", "[CRIT]", "[ERR]", "[WARN]", "[NOTICE]", "[INFO]", "[DEBUG]"};
 
-int tlog_init(int mode, int level, void* param)
+int tlog_init(const int mode, const int level, const void* param)
 {
 	log_mode = mode;
 	min_level = level;
@@ -58,12 +59,15 @@ int tlog_init(int mode, int level, void* param)
 		case TLOG_MODE_STDERR:
 			log_file = stderr;
 		break;
+
+	default:
+		return -1;
 	}
 
 	return 0;
 }
 
-void tlog(int level, const char* format, ...)
+void tlog(const int level, const char* format, ...)
 {
 	if (level > min_level)
 		return;
@@ -85,21 +89,32 @@ void tlog(int level, const char* format, ...)
 	va_end(args);
 }
 
-void tlog_hex(int level, const char* str, void* d, int l)
+void tlog_hex(const int level, const char* str, const void* d, int l)
 {
 	if (level > min_level)
 		return;
 
-	unsigned char* p = (unsigned char*)d;
 	int pos = sprintf(log_str, "%s: (%d) ", str, l);
 
-	for (int i=0; i<l; i++)
-		pos += sprintf(log_str+pos, "%02hhx:", p[i]);
+	if (d) {
+		const unsigned char* p = (unsigned char*)d;
+		for (int i = 0; i < l; i++) {
+			if (pos >= BUF_SIZE - 4) {
+				sprintf(log_str + pos, "...");
+				break;
+			}
 
-	if (log_mode == TLOG_MODE_SYSLOG)
-		syslog(level, "%s %s",level_str[level], log_str);
-	else
-	{
+			pos += sprintf(log_str + pos, "%02hhx:", p[i]);
+		}
+	}
+	else {
+		pos += sprintf(log_str + pos, "%s:", "NULL");
+	}
+
+	if (log_mode == TLOG_MODE_SYSLOG) {
+		syslog(level, "%s %s", level_str[level], log_str);
+	}
+	else {
 		fprintf(log_file, "%s ", level_str[level]);
 		fputs(log_str, log_file);
 		fputs("\n", log_file);
